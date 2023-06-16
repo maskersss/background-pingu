@@ -30,10 +30,12 @@ def download_from_paste_ee_or_mclogs(link):
         return None
 
 def get_mods_from_log(log):
-    # Find all lines that have [✔️] before a mod name
+    # Find all lines that have [✔️] or [✔] before a mod name
     pattern = re.compile(r'\[✔️\]\s+([^\[\]]+\.jar)')
     mods = pattern.findall(log)
-
+    
+    pattern = re.compile(r'\[✔\]\s+([^\[\]]+\n)')
+    mods += [mod.rstrip('\n').replace(' ','+')+'.jar' for mod in pattern.findall(log)]
     # Return list of mod names
     return mods
 
@@ -320,7 +322,7 @@ def onedrive(minecraft_folder,launcher):
 def hs_err_pid(log, mods):
     output = ''
     if ('A fatal error has been detected by the Java Runtime Environment' in log
-        or 'EXCEPTION_ACCESS_VIOLATION' in log):
+    or 'EXCEPTION_ACCESS_VIOLATION' in log):
         output += '''🟠 This crash may be caused by one of the following:
 - Concurrently running programs, such as OBS and Discord, that use the same graphics card as the game.
  - Try using window capture instead of game capture in OBS.
@@ -365,11 +367,11 @@ def multimc_in_program_files(minecraft_folder):
 
 def macos_too_new_java(log):
     if "Terminating app due to uncaught exception 'NSInternalInconsistencyException', reason: 'NSWindow drag regions should only be invalidated on the Main Thread!'" in log:
-        return "🔴 You are using too new a Java version. Please follow the steps on this wiki page to install 8u241: <https://github.com/MultiMC/MultiMC5/wiki/Java-on-macOS>. You don't need to uninstall the other Java version."
+        return "🔴 You are using too new of a Java version. Please follow the steps on this wiki page to install 8u241: <https://github.com/MultiMC/MultiMC5/wiki/Java-on-macOS>. You don't need to uninstall the other Java version."
 
 def forge_too_new_java(log):
     if 'java.lang.ClassCastException: class jdk.internal.loader.ClassLoaders$AppClassLoader cannot be cast to class java.net.URLClassLoader' in log:
-        return "🔴 You need to use Java 8 to play Forge on this version. Use this guide to install it, but make sure to install Java **8** instead: <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>."
+        return "🔴 You need to use Java 8 to use Forge on this Minecraft version. Use this guide to install it, but make sure to install Java **8** instead of Java 17: <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>."
 
 def m1_failed_to_find_service_port(log):
     if 'java.lang.IllegalStateException: GLFW error before init: [0x10008]Cocoa: Failed to find service port for display' in log:
@@ -397,7 +399,7 @@ def sodium_config(log):
 
 def using_ssrng(mods,is_multimc_or_fork):
     if any("serverSideRNG" in mod for mod in mods):
-        return f"🟡 You are using serverSideRNG. Currently the server for it is down, so the mod is useless and it's recommended to {'disable' if is_multimc_or_fork else 'delete'} it."
+        return f"🟡 You are using serverSideRNG. The server for it is currently down, so the mod is useless and it's recommended to {'disable' if is_multimc_or_fork else 'delete'} it."
 
 def random_log_spam_maskers(log):
     if ('Using missing texture, unable to load' in log
@@ -431,7 +433,7 @@ def maskers_crash(log):
     and 'net.minecraft.class_148: Feature placement' in log
     and 'net.minecraft.server.MinecraftServer.method_3813(MinecraftServer.java:876)' in log
     and 'at net.minecraft.server.MinecraftServer.method_3748(MinecraftServer.java:813)' in log):
-        return "🟢 This seems to be a rare crash that you can't do anything about. So far we only know of one case when it happened."
+        return "🟢 This seems to be a rare crash that you can't do anything about. So far we only know of one case when it happened. <@695658634436411404>"
 
 def lithium_crash(log):
     # known incidents:
@@ -448,9 +450,9 @@ def old_arr(mods):
 
 def limited_graphics_capability(log):
     # happened in javacord:
-    # https://discord.com/channels/83066801105145856/727673359860760627/1119184648896000010s
+    # https://discord.com/channels/83066801105145856/727673359860760627/1119184648896000010
     if 'GLFW error 65543: WGL: OpenGL profile requested but WGL_ARB_create_context_profile is unavailable' in log:
-        return "🔴 It appears that your issue stems from using Intel HD2000 integrated graphics, which only supports up to OpenGL 3.1. Unfortunately, there are no dedicated Windows 10 drivers available for this graphics card. As a result, you will not be easily able to run Minecraft 1.17+, as 21w10a and later require improved graphics capabilities beyond OpenGL 3.1. You can still play Minecraft versions 1.16 and earlier without any problems."
+        return "🔴 It appears that your issue stems from using Intel HD2000 integrated graphics, which only supports up to OpenGL 3.1. Unfortunately, there are no dedicated Windows 10 drivers available for this graphics card. As a result, you will not be easily able to run Minecraft 1.17+, as 21w10a and later require improved graphics capabilities beyond OpenGL 3.1. You should still be able to play Minecraft versions 1.16 and earlier without any problems."
 
 
 def parse_log(link):
@@ -508,3 +510,4 @@ def parse_log(link):
         if issue:
             result.append(issue)
     return result
+
