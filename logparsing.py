@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[3]:
+
+
 import requests
 import re
 from packaging import version
-
-import re
-import requests
 
 def download_from_paste_ee_or_mclogs(link):
     # Check if it's a paste.ee link
@@ -41,12 +41,12 @@ def get_mods_from_log(log):
     return mods
 
 def get_mods_type(mods):
-    # 0 - no mods, 1 - mods but no fabric mods, 2 - fabric mods but no mcsr, 3 - mcsr mods
+    # 0 - no mods, 1 - mods but no fabric mods, 2 - fabric mods but no mcsr mods, 3 - mcsr mods
     mcsr_mods = ['worldpreview','anchiale','sleepbackground','StatsPerWorld','z-buffer-fog',
                 'tab-focus','setspawn','SpeedRunIGT','atum','standardsettings','forceport',
                 'lazystronghold','antiresourcereload','extra-options','chunkcacher',
                 'serverSideRNG','BiomeThreadLocalFix','peepopractice']
-    fabric_mods = ['lithium','FabricProxy-Lite','krypton','sodium','voyager']
+    fabric_mods = ['FabricProxy-Lite','sodium','voyager']
     if len(mods) == 0:
         return 0
     elif any(any(mcsr_mod in mod for mcsr_mod in mcsr_mods) for mod in mods):
@@ -208,12 +208,12 @@ def not_using_fabric(modloader,mods_type):
         elif mods_type == 2:
             return "🔴 The mods you are using require having Fabric installed. Type `!!fabric` for a guide on how to install fabric."
         elif mods_type == 1:
-            return "🟡 You aren't using a modloader. Type `!!fabric` for a guide on how to install fabric."
+            return "🟡 You don't seem to be using a modloader. Type `!!fabric` for a guide on how to install fabric."
 
 def should_use_prism(launcher, OS):
     if launcher == 'MultiMC' and OS == 'MacOS':
-        return '🟡 If you use M1 or M2, it is recommended to use Prism Launcher instead of MultiMC.'
-    
+        return '🟡 If you use M1 or M2, it is recommended to use Prism Launcher instead of MultiMC. You can check out this guide for how to set up speedrunning on a Mac: <https://www.youtube.com/watch?v=GomIeW5xdBM>.'
+
 def need_java_17_plus(log, mods, major_java_version):
     needed_java_version = None
     output = ''
@@ -296,7 +296,7 @@ def outdated_fabric_loader(fabric_loader_version, mods):
     elif fabric_loader_version == '0.14.15' or fabric_loader_version == '0.14.16':
         return "🔴 You're using an old version of Fabric Loader. You should update it. Type `!!fabric` for instructions on how to do it."
 
-def not_enough_ram_or_rong_sodium(max_memory_allocation, OS, mods, log, java_arguments):
+def not_enough_ram_or_rong_sodium(max_memory_allocation, OS, mods, log, java_arguments, mods_type):
     output = ''
     if max_memory_allocation:
         if (max_memory_allocation < (1200 if ('shenandoah' in java_arguments) else 1900)) and ('OutOfMemoryError' in log):
@@ -305,9 +305,9 @@ def not_enough_ram_or_rong_sodium(max_memory_allocation, OS, mods, log, java_arg
             output += '🟠 You likely have too little RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
         elif max_memory_allocation < (1200 if ('shenandoah' in java_arguments) else 1800):
             output += '🟡 You likely have too little RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
-        if max_memory_allocation > 4500:
+        if max_memory_allocation > 4500 and mods_type == 3:
             output += '🟠 You likely have too much RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
-        elif max_memory_allocation > 3100:
+        elif max_memory_allocation > 3200 and mods_type == 3:
             output += '🟡 You likely have too much RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
         if OS == 'MacOS' and (('sodium-1.16.1-v1.jar' in mods) or ('sodium-1.16.1-v2.jar' in mods)):
             output += "🟠 You seem to be using a version of Sodium that has a memory leak on MacOS. Delete the one you have and download <https://github.com/Minecraft-Java-Edition-Speedrunning/mcsr-sodium-mac-1.16.1/releases/tag/latest> instead.\n"
@@ -480,7 +480,7 @@ def parse_log(link):
         using_32bit_java(log),
         outdated_srigt_fabric_01415(mods, fabric_loader_version, minecraft_version),
         outdated_fabric_loader(fabric_loader_version,mods),
-        not_enough_ram_or_rong_sodium(max_memory_allocation, OS, mods, log, java_arguments),
+        not_enough_ram_or_rong_sodium(max_memory_allocation, OS, mods, log, java_arguments, mods_type),
         onedrive(minecraft_folder,launcher),
         hs_err_pid(log, mods),
         using_phosphor(mods, minecraft_version),
@@ -511,4 +511,8 @@ def parse_log(link):
         if issue:
             result.append(issue)
     return result
+
+'''for q in parse_log('https://paste.ee/p/AllZF'):
+    print(q)
+    print('')'''
 
