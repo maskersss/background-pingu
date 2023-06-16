@@ -277,7 +277,7 @@ def outdated_srigt_fabric_01415(mods, fabric_loader_version, minecraft_version):
         speedrunigt = match.group(1)
         if (version.parse(speedrunigt) < version.parse('13.3')
         and version.parse(fabric_loader_version) > version.parse('0.14.14')):
-            output += "🔴 You're using an old version of SpeedrunIGT that is incompatible with Fabric Loader 0.14.14+. You should delete the one you have and download the latest one from https://redlime.github.io/SpeedRunIGT/"
+            output += "🔴 You're using an old version of SpeedrunIGT that is incompatible with Fabric Loader 0.14.14+. You should delete the one you have and download the latest one from <https://redlime.github.io/SpeedRunIGT/>."
             if minecraft_version != '1.16.1':
                 output += '\nAlternatively, you can try using Fabric Loader 0.14.14.'
     if output:
@@ -308,8 +308,8 @@ def not_enough_ram_or_rong_sodium(max_memory_allocation, OS, mods, log, java_arg
             output += '🟠 You likely have too much RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
         elif max_memory_allocation > 3200 and mods_type == 3:
             output += '🟡 You likely have too much RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
-        if OS == 'MacOS' and (('sodium-1.16.1-v1.jar' in mods) or ('sodium-1.16.1-v2.jar' in mods)):
-            output += "🟠 You seem to be using a version of Sodium that has a memory leak on MacOS. Delete the one you have and download <https://github.com/Minecraft-Java-Edition-Speedrunning/mcsr-sodium-mac-1.16.1/releases/tag/latest> instead.\n"
+    if OS == 'MacOS' and (('sodium-1.16.1-v1.jar' in mods) or ('sodium-1.16.1-v2.jar' in mods)):
+        output += "🟠 You seem to be using a version of Sodium that has a memory leak on MacOS. Delete the one you have and download <https://github.com/Minecraft-Java-Edition-Speedrunning/mcsr-sodium-mac-1.16.1/releases/tag/latest> instead.\n"
     if output:
         return output.rstrip("\n")
     elif 'OutOfMemoryError' in log:
@@ -510,4 +510,3 @@ def parse_log(link):
         if issue:
             result.append(issue)
     return result
-
