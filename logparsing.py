@@ -512,7 +512,3 @@ def parse_log(link):
             result.append(issue)
     return result
 
-'''for q in parse_log('https://paste.ee/p/AllZF'):
-    print(q)
-    print('')'''
-
