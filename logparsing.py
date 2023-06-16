@@ -163,7 +163,6 @@ def get_modloader(log):
                 return 'forge'
             else:
                 return 'vanilla'
-
     # If the modloader cannot be determined, return None
     return None
 
@@ -236,9 +235,8 @@ def need_java_17_plus(log, mods, major_java_version):
             output += f"🔴 You are using {'mods' if len(java_17_mods)>1 else 'a mod'} ({', '.join(java_17_mods)}) that require{'s' if len(java_17_mods)==1 else ''} using Java {needed_java_version}+."
             if any("mcsrranked" in mod for mod in mods):
                 update_java = 0
-            elif any("antiresourcereload" in mod for mod in java_17_mods):
-                update_java = 1
-            elif any("peepopractice" in mod for mod in java_17_mods):
+            elif (any("antiresourcereload" in mod for mod in java_17_mods)
+            or any("peepopractice" in mod for mod in java_17_mods)):
                 update_java = 1
             else:
                 update_java = 0
@@ -289,9 +287,10 @@ def outdated_srigt_fabric_01415(mods, fabric_loader_version, minecraft_version):
 def outdated_fabric_loader(fabric_loader_version, mods):
     if fabric_loader_version is None:
         return None
+    elif version.parse(fabric_loader_version) < version.parse('0.12.2'):
+        return "🔴 You're using an old version of Fabric Loader. You should update it. Type `!!fabric` for instructions on how to do it."
     elif version.parse(fabric_loader_version) < version.parse('0.14.0'):
-        if any('mcsrranked' for mod in mods):
-            return f"{'🔴' if any('mcsrranked' in mod for mod in mods) else '🟠'} You're using an old version of Fabric Loader. You should update it. Type `!!fabric` for instructions on how to do it."
+        return f"{'🔴' if any('mcsrranked' in mod for mod in mods) else '🟠'} You're using an old version of Fabric Loader. You should update it. Type `!!fabric` for instructions on how to do it."
     elif version.parse(fabric_loader_version) < version.parse('0.14.14'):
         return "🟡 You're using an old version of Fabric Loader. You should update it. Type `!!fabric` for instructions on how to do it."
     elif fabric_loader_version == '0.14.15' or fabric_loader_version == '0.14.16':
@@ -408,7 +407,7 @@ def random_log_spam_maskers(log):
     or 'Exception loading blockstate definition' in log
     or 'Unable to load model' in log
     or 'java.lang.NullPointerException: Cannot invoke "com.mojang.authlib.minecraft.MinecraftProfileTexture.getHash()" because "?" is null' in log):
-        return "🟡 Your log seems to have a lot of lines with random spam. It shouldn't cause any problems, and it's unknown what causes it. As far as we know, so far it has only happened to <@695658634436411404>."
+        return "🟢 Your log seems to have lines with random spam. It shouldn't cause any problems, and there aren't any known fixes. <@695658634436411404>"
 
 def need_fapi(log):
     if 'requires any version of fabric, which is missing!' in log:
@@ -429,21 +428,33 @@ def need_to_launch_as_admin(log):
         return '🟠 Try opening the launcher as administrator.'
 
 def maskers_crash(log):
+    # https://discord.com/channels/928728732376649768/940285426441281546/1107588481556946998 devcord
     if ('java.lang.RuntimeException: We are asking a region for a chunk out of bound' in log
     and 'Encountered an unexpected exception' in log
     and 'net.minecraft.class_148: Feature placement' in log
     and 'net.minecraft.server.MinecraftServer.method_3813(MinecraftServer.java:876)' in log
     and 'at net.minecraft.server.MinecraftServer.method_3748(MinecraftServer.java:813)' in log):
-        return "🟢 This seems to be a rare crash that you can't do anything about. (https://discord.com/channels/928728732376649768/940285426441281546/1107588481556946998 from devcord)"
+        return "🟢 This seems to be a rare crash that you can't do anything about. So far we only know of one case when it happened."
 
 def lithium_crash(log):
-    if ('java.lang.IllegalStateException: Adding Entity listener a second tim' in log
+    # known incidents:
+    # https://discord.com/channels/928728732376649768/940285426441281546/1077767432812376265 devcord
+    # https://discord.com/channels/928728732376649768/940285426441281546/1093051774409121822 devcord
+    # https://discord.com/channels/1056779246728658984/1074302943374872637/1119191694563344434 rankedcord
+    if ('java.lang.IllegalStateException: Adding Entity listener a second time' in log
     and 'me.jellysquid.mods.lithium.common.entity.tracker.nearby' in log):
-        return "🟢 This seems to be a rare crash caused by Lithium that you can't do anything about. It happens really rarely, so it's not worth it to stop using Lithium because of it."
+        return "🟢 This seems to be a rare crash caused by Lithium that you can't do anything about. It happens really rarely, so far it only happened about 4 times for everyone."
 
 def old_arr(mods):
     if 'antiresourcereload-1.16.1-1.0.0.jar' in mods:
         return "🔴 You're using an old version of AntiResourceReload, which can cause Minecraft to crash when entering practice maps. You should update it: <https://github.com/Minecraft-Java-Edition-Speedrunning/mcsr-antiresourcereload-1.16.1/releases/tag/latest>"
+
+def limited_graphics_capability(log):
+    # happened in javacord:
+    # https://discord.com/channels/83066801105145856/727673359860760627/1119184648896000010s
+    if 'GLFW error 65543: WGL: OpenGL profile requested but WGL_ARB_create_context_profile is unavailable' in log:
+        return "🔴 It appears that your issue stems from using Intel HD2000 integrated graphics, which only supports up to OpenGL 3.1. Unfortunately, there are no dedicated Windows 10 drivers available for this graphics card. As a result, you will not be easily able to run Minecraft 1.17+, as 21w10a and later require improved graphics capabilities beyond OpenGL 3.1. You can still play Minecraft versions 1.16 and earlier without any problems."
+
 
 def parse_log(link):
     log = download_from_paste_ee_or_mclogs(link)
@@ -492,7 +503,8 @@ def parse_log(link):
         need_to_launch_as_admin(log),
         maskers_crash(log),
         lithium_crash(log),
-        old_arr(mods)
+        old_arr(mods),
+        limited_graphics_capability(log)
     ]
     result = []
     for issue in issues:
@@ -500,7 +512,7 @@ def parse_log(link):
             result.append(issue)
     return result
 
-
-
-
+'''for q in parse_log('https://paste.ee/p/AllZF'):
+    print(q)
+    print('')'''
 
