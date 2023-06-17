@@ -44,7 +44,7 @@ def get_mods_type(mods):
     mcsr_mods = ['worldpreview','anchiale','sleepbackground','StatsPerWorld','z-buffer-fog',
                 'tab-focus','setspawn','SpeedRunIGT','atum','standardsettings','forceport',
                 'lazystronghold','antiresourcereload','extra-options','chunkcacher',
-                'serverSideRNG','BiomeThreadLocalFix','peepopractice']
+                'serverSideRNG','BiomeThreadLocalFix','peepopractice','fast-reset']
     fabric_mods = ['FabricProxy-Lite','sodium','voyager']
     if len(mods) == 0:
         return 0
@@ -68,9 +68,6 @@ def get_java_version(log): # returns a string like '19.0.2'
         if version_match:
             return version_match.group(1)
 
-    # If the Java version can't be found, return None
-    return None
-
 def get_major_java_version(java_version):
     if java_version:
         version_parts = java_version.split('.')
@@ -88,9 +85,6 @@ def get_minecraft_folder(log):
         # Extract the folder location from the next line
         folder_line = match.group(1)
         return folder_line.strip()
-
-    # If the folder location can't be found, return None
-    return None
 
 def get_OS(folder_location):
     if folder_location is None:
@@ -116,17 +110,11 @@ def get_minecraft_version(log):
         if version_match:
             return version_match.group(1)
 
-    # If the Minecraft version can't be found, return None
-    return None
-
 def extract_fabric_loader_version(log):
     pattern = re.compile(r'Loading Minecraft \S+ with Fabric Loader (\S+)')
     match = pattern.search(log)
-
     if match:
         return match.group(1)
-
-    return None
 
 def get_launcher(log):
     if log[:7] == 'MultiMC':
@@ -162,8 +150,6 @@ def get_modloader(log):
                 return 'forge'
             else:
                 return 'vanilla'
-    # If the modloader cannot be determined, return None
-    return None
 
 def get_java_arguments(log):
     pattern = re.compile(r'Java Arguments:\n(.*?)\n', re.DOTALL)
@@ -185,9 +171,6 @@ def get_max_memory_allocation(log):
         memory_match = memory_pattern.search(arguments_line)
         if memory_match:
             return int(memory_match.group(1))
-
-    # If the maximum memory allocation value can't be found, return None
-    return None
 
 def not_using_fabric(modloader,mods_type):
     # 0 - no mods, 1 - mods but no general mods, 2 - general mods but no mcsr, 3 - mcsr mods
@@ -265,7 +248,7 @@ def outdated_srigt_fabric_01415(mods, fabric_loader_version, minecraft_version):
     output = ''
     speedrunigt = [mod for mod in mods if 'SpeedRunIGT' in mod]
     if len(speedrunigt) > 1:
-        return '🟢 You have several versions of SpeedRunIGT installed. You should delete the older ones.'
+        return '🟡 You have several versions of SpeedRunIGT installed. You should delete the older ones.'
     if len(speedrunigt) == 0:
         return None
     if fabric_loader_version is None:
@@ -277,7 +260,7 @@ def outdated_srigt_fabric_01415(mods, fabric_loader_version, minecraft_version):
         speedrunigt = match.group(1)
         if (version.parse(speedrunigt) < version.parse('13.3')
         and version.parse(fabric_loader_version) > version.parse('0.14.14')):
-            output += "🔴 You're using an old version of SpeedrunIGT that is incompatible with Fabric Loader 0.14.14+. You should delete the one you have and download the latest one from <https://redlime.github.io/SpeedRunIGT/>."
+            output += "🔴 You're using an old version of SpeedrunIGT that is incompatible with Fabric Loader 0.14.14+. You should delete the version of SpeedrunIGT you have and download the latest one from <https://redlime.github.io/SpeedRunIGT/>."
             if minecraft_version != '1.16.1':
                 output += '\nAlternatively, you can try using Fabric Loader 0.14.14.'
     if output:
@@ -298,7 +281,7 @@ def outdated_fabric_loader(fabric_loader_version, mods):
 def not_enough_ram_or_rong_sodium(max_memory_allocation, OS, mods, log, java_arguments, mods_type):
     output = ''
     if max_memory_allocation:
-        if (max_memory_allocation < (1200 if ('shenandoah' in java_arguments) else 1900)) and ('OutOfMemoryError' in log):
+        if (max_memory_allocation < (1200 if ('shenandoah' in java_arguments) else 1900)) and (('OutOfMemoryError' in log) or ('Process crashed with exitcode -805306369' in log)):
             output += '🔴 You likely have too little RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
         elif max_memory_allocation < (880 if ('shenandoah' in java_arguments) else 1200):
             output += '🟠 You likely have too little RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
@@ -328,7 +311,7 @@ def hs_err_pid(log, mods):
  - Try using window capture instead of game capture in OBS.
  - Try disabling hardware acceleration in Discord.\n'''
         if any("SpeedRunIGT" in mod for mod in mods):
-            output += '- A compatibility issue between SpeedrunIGT, Intel Graphics and OpenGL. Enable “safe font mode” in SpeedrunIGT options. If the game crashes before you can access that menu, delete .minecraft/speedrunigt.\n'
+            output += '- A compatibility issue between SpeedrunIGT, Intel Graphics and OpenGL. Enable “Safe Font Mode” in SpeedrunIGT options. If the game crashes before you can access that menu, delete .minecraft/speedrunigt.\n'
         output += "- Driver issues. Check if your drivers are updated, and update them or downgrade them if they're already updated."
     if output:
         return output.rstrip("\n")
@@ -344,13 +327,13 @@ def using_phosphor(mods, minecraft_version):
             elif minecraft_version == '1.16.5':
                 output += "You can download it here: <https://github.com/PaperMC/Starlight/releases/download/1.0.0-RC2/starlight-forge-1.0.0-RC2-1.16.5.jar>"
             elif len(minecraft_version)<4:
-                output += "<@695658634436411404> huh1"
+                output = "<@695658634436411404> huh1"
             elif float(minecraft_version[:4])>1.16:
                 output += "You can download it here: <https://modrinth.com/mod/starlight/versions>"
             elif minecraft_version[:4] == '1.15':
                 output += "You can download it here: <https://github.com/dariasc/Starlight/releases/tag/1.15%2F1.0.0-alpha>"
             else:
-                output += "<@695658634436411404> huh2"
+                output = "<@695658634436411404> huh2"
             return output
 
 def failed_to_download_assets(log):
@@ -361,9 +344,9 @@ def id_range_exceeded(log):
     if 'java.lang.RuntimeException: Invalid id 4096 - maximum id range exceeded.' in log:
         return "🔴 You've exceeded the hardcoded ID Limit. Remove some mods, or install [JustEnoughIDs](<https://www.curseforge.com/minecraft/mc-mods/jeid>)"
 
-def multimc_in_program_files(minecraft_folder):
+def multimc_in_program_files(minecraft_folder,launcher):
     if minecraft_folder and ('C:/Program Files' in minecraft_folder):
-        return '🟡 Your MultiMC installation is in `Program Files`. It is generally not recommended, and could cause issues. Consider moving it to a different location.'
+        return '🟡 Your {} installation is in `Program Files`. It is generally not recommended, and could cause issues. Consider moving it to a different location.'.format(launcher if launcher else 'launcher')
 
 def macos_too_new_java(log):
     if "Terminating app due to uncaught exception 'NSInternalInconsistencyException', reason: 'NSWindow drag regions should only be invalidated on the Main Thread!'" in log:
@@ -385,7 +368,7 @@ def shadermod_optifine_conflict(log):
     if 'java.lang.RuntimeException: Shaders Mod detected. Please remove it, OptiFine has built-in support for shaders.' in log:
         return "🔴 You've installed a Shaders Mod alongside OptiFine. OptiFine has built-in shader support, so you should remove Shaders Mod."
 
-def using_system_glfw(log):
+def using_system_glfw_or_openal(log):
     if 'Using system GLFW' in log:
         return "🟠 You seem to be using your system's GLFW installation. This can cause the instance to crash if not properly setup. In case of a crash, make sure this isn't the cause of it."
 
@@ -398,7 +381,7 @@ def sodium_config(log):
         return '🔴 If your game crashes when you open the video settings menu or load into a world, delete `.minecraft/config/sodium-options.json`.'
 
 def using_ssrng(mods,is_multimc_or_fork):
-    if any("serverSideRNG" in mod for mod in mods):
+    if any('serverSideRNG-9.0.0.jar' in mod for mod in mods):
         return f"🟡 You are using serverSideRNG. The server for it is currently down, so the mod is useless and it's recommended to {'disable' if is_multimc_or_fork else 'delete'} it."
 
 def random_log_spam_maskers(log):
@@ -414,7 +397,8 @@ def need_fapi(log):
 
 def dont_need_fapi(mods,mods_type):
     if mods_type == 3 and any('fabric-api' in mod for mod in mods):
-        return "🟠 Note that you're using Fabric API, which is not allowed for speedrunning."
+        if not any('mcsrranked' in mod for mod in mods): # will check for it in a different function
+            return "🟠 Note that you're using Fabric API, which is not allowed for speedrunning."
 
 def couldnt_extract_native_jar(log):
     if "Couldn't extract native jar" in log:
@@ -444,8 +428,8 @@ def lithium_crash(log):
     and 'me.jellysquid.mods.lithium.common.entity.tracker.nearby' in log):
         return "🟢 This seems to be a rare crash caused by Lithium that you can't do anything about. It happens really rarely, so far it only happened about 4 times for everyone."
 
-def old_arr(mods):
-    if 'antiresourcereload-1.16.1-1.0.0.jar' in mods:
+def old_arr(mods,minecraft_version):
+    if ('antiresourcereload-1.16.1-1.0.0.jar' in mods) and (minecraft_version == '1.16.1'):
         return "🔴 You're using an old version of AntiResourceReload, which can cause Minecraft to crash when entering practice maps. You should update it: <https://github.com/Minecraft-Java-Edition-Speedrunning/mcsr-antiresourcereload-1.16.1/releases/tag/latest>"
 
 def limited_graphics_capability(log):
@@ -454,6 +438,55 @@ def limited_graphics_capability(log):
     if 'GLFW error 65543: WGL: OpenGL profile requested but WGL_ARB_create_context_profile is unavailable' in log:
         return "🔴 It appears that your issue stems from using Intel HD2000 integrated graphics, which only supports up to OpenGL 3.1. Unfortunately, there are no dedicated Windows 10 drivers available for this graphics card. As a result, you will not be easily able to run Minecraft 1.17+, as 21w10a and later require improved graphics capabilities beyond OpenGL 3.1. You should still be able to play Minecraft versions 1.16 and earlier without any problems."
 
+def exitcode_1073741819(log):
+    if ('Process crashed with exitcode -1073741819 (0xffffffffc0000005).' in log
+    or 'The instruction at 0x%p referenced memory at 0x%p. The memory could not be %s.' in log):
+        return '''🔴 Your game crashed with exitcode `-1073741819`. Here are possible solutions:
+- Check if you have a controller plugged in. If you do, unplug it.
+- Reboot your pc.
+- Some mods may cause this crash for currently unknown reasons. So far, this has happened with Sodium, SleepBackground, and LazyDFU. Try removing these mods/other mods one by one and testing if the game still crashes.
+- Make sure you have the latest graphics driver.'''
+
+def exitcode_805306369_or_old_ssrng(log,mods):
+    pattern = r'^serverSideRNG-[1-8]\.0\.0\.jar$'
+    if any(re.match(pattern, mod) for mod in mods):
+        return "🔴 You're using an old version of serverSideRNG, which is now illegal and can often cause problems. The server for it is currently down, so the mod is useless regardless and you should delete it."
+    elif 'Process crashed with exitcode -805306369' in log:
+        return "🟠 Check your options.txt file for any values that are set to 0 and are not supposed to be 0 (such as `maxFps:0`). If you find any, change them to the values you want and save the file."
+
+def ranked_non_whitelisted_mods(mods,log,is_multimc_or_fork):
+    if any('mcsrranked' in mod for mod in mods):
+        output = ''
+        whitelisted_mods = ['sodium','replaymod','extra-options','retino','worldpreview','sleepbackground','SpeedRunIGT',
+                'atum','standardsettings','forceport','lazystronghold','antiresourcereload','serverSideRNG',
+                'BiomeThreadLocalFix','mcsrranked','fast-reset','starlight','phosphor','lithium','krypton',
+                'dynamic-menu-fps','lazydfu','voyager','forceport','FabricProxy-Lite']
+        non_whitelisted_mods = [mod for mod in mods if not any(w_mod in mod for w_mod in whitelisted_mods)]
+        if non_whitelisted_mods:
+            pattern = r'The Fabric Mod "(.*?)" is not whitelisted!'
+            matches = re.findall(pattern, log)
+            if matches: # if ranked complains about non-whitelisted mods
+                # non_whitelisted_mods_and_libs = list(matches)
+                if any('fabric-api' in mod for mod in non_whitelisted_mods):
+                    output += "🔴 You're using Fabric API. It is a mod separate to Fabric Loader, and it isn't allowed for speedrunning. Delete it from your `mods` folder.\n"
+                practice_mods = ['peepopractice','stronghold-trainer','noverworld','blinded','heatshrink','lavapool-juicer',
+                                'cageless','no-spawnchunks','treasure-juicer','no-basalt','shipwreck-juicer','logmod']
+                practice_mods = [nw_mod for nw_mod in non_whitelisted_mods if any(p_mod in nw_mod for p_mod in practice_mods)]
+                if len(non_whitelisted_mods) != len(practice_mods):
+                    output += f"🔴 You are using {'mods' if len(non_whitelisted_mods)>1 else 'a mod'} ({', '.join(non_whitelisted_mods)}) that {'is' if len(non_whitelisted_mods)==1 else 'are'}n't whitelisted for MCSR Ranked. Delete {'it' if len(non_whitelisted_mods)==1 else 'them'} from your `mods` folder.\n"
+                else:
+                    output += f"🔴 You are using {'practice mods' if len(practice_mods)>1 else 'a practice mod'} ({', '.join(practice_mods)}) that {'is' if len(practice_mods)==1 else 'are'}n't allowed to be used when playing Ranked."
+                    if is_multimc_or_fork:
+                        output += f" You should either create a separate practice instance for {'them' if len(practice_mods)>1 else 'it'} or disable {'them' if len(practice_mods)>1 else 'it'}."
+                    output += "\n"
+            else: # if ranked doesn't complain about non-whitelisted mods
+                output += f"<@695658634436411404> {'are' if len(non_whitelisted_mods)>1 else 'is'} ({', '.join(non_whitelisted_mods)}) whitelisted?\n"
+        else:
+            # if all mods should be whitelisted
+            
+            output = output
+        if output:
+            return output
 
 def parse_log(link):
     log = download_from_paste_ee_or_mclogs(link)
@@ -485,7 +518,7 @@ def parse_log(link):
         using_phosphor(mods, minecraft_version),
         failed_to_download_assets(log),
         id_range_exceeded(log),
-        multimc_in_program_files(minecraft_folder),
+        multimc_in_program_files(minecraft_folder,launcher),
         macos_too_new_java(log),
         forge_too_new_java(log),
         m1_failed_to_find_service_port(log),
@@ -502,8 +535,11 @@ def parse_log(link):
         need_to_launch_as_admin(log),
         maskers_crash(log),
         lithium_crash(log),
-        old_arr(mods),
-        limited_graphics_capability(log)
+        old_arr(mods,minecraft_version),
+        limited_graphics_capability(log),
+        exitcode_1073741819(log),
+        exitcode_805306369_or_old_ssrng(log, mods),
+        ranked_non_whitelisted_mods(mods,log,is_multimc_or_fork)
     ]
     result = []
     for issue in issues:
