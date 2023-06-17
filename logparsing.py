@@ -21,7 +21,6 @@ def download_from_paste_ee_or_mclogs(link):
             direct_link = f'https://api.mclo.gs/1/raw/{mclogs_id}'
         else:
             return None
-
     # Download text from direct link
     response = requests.get(direct_link)
     if response.status_code == 200:
@@ -33,7 +32,6 @@ def get_mods_from_log(log):
     # Find all lines that have [✔️] or [✔] before a mod name
     pattern = re.compile(r'\[✔️\]\s+([^\[\]]+\.jar)')
     mods = pattern.findall(log)
-    
     pattern = re.compile(r'\[✔\]\s+([^\[\]]+\n)')
     mods += [mod.rstrip('\n').replace(' ','+')+'.jar' for mod in pattern.findall(log)]
     # Return list of mod names
@@ -59,7 +57,6 @@ def get_java_version(log): # returns a string like '19.0.2'
     # Find the line that contains "Checking Java version..."
     pattern = re.compile(r'Checking Java version\.\.\.\n(.*)\n')
     match = pattern.search(log)
-
     if match:
         # Extract the Java version from the next line
         version_line = match.group(1)
@@ -80,7 +77,6 @@ def get_minecraft_folder(log):
     # Find the line that contains "Minecraft folder is:"
     pattern = re.compile(r'Minecraft folder is:\n(.*)\n')
     match = pattern.search(log)
-
     if match:
         # Extract the folder location from the next line
         folder_line = match.group(1)
@@ -101,7 +97,6 @@ def get_minecraft_version(log):
     # Find the line that contains "Params:"
     pattern = re.compile(r'Params:\n(.*?)\n', re.DOTALL)
     match = pattern.search(log)
-
     if match:
         # Extract the version value from the next line
         params_line = match.group(1)
@@ -119,13 +114,13 @@ def extract_fabric_loader_version(log):
 def get_launcher(log):
     if log[:7] == 'MultiMC':
         return 'MultiMC'
-    if log[:5] == 'Prism':
+    elif log[:5] == 'Prism':
         return 'Prism'
-    if log[:6] == 'PolyMC':
+    elif log[:6] == 'PolyMC':
         return 'PolyMC'
-    if log[:6] == 'ManyMC':
+    elif log[:6] == 'ManyMC':
         return 'ManyMC'
-    if log[:7] == 'UltimMC':
+    elif log[:7] == 'UltimMC':
         return 'UltimMC'
 
 def get_is_multimc_or_fork(launcher):
@@ -260,7 +255,7 @@ def outdated_srigt_fabric_01415(mods, fabric_loader_version, minecraft_version):
         speedrunigt = match.group(1)
         if (version.parse(speedrunigt) < version.parse('13.3')
         and version.parse(fabric_loader_version) > version.parse('0.14.14')):
-            output += "🔴 You're using an old version of SpeedrunIGT that is incompatible with Fabric Loader 0.14.14+. You should delete the version of SpeedrunIGT you have and download the latest one from <https://redlime.github.io/SpeedRunIGT/>."
+            output += "🔴 You're using an old version of SpeedrunIGT that is incompatible with Fabric Loader 0.14.15+. You should delete the version of SpeedrunIGT you have and download the latest one from <https://redlime.github.io/SpeedRunIGT/>."
             if minecraft_version != '1.16.1':
                 output += '\nAlternatively, you can try using Fabric Loader 0.14.14.'
     if output:
@@ -368,7 +363,7 @@ def shadermod_optifine_conflict(log):
     if 'java.lang.RuntimeException: Shaders Mod detected. Please remove it, OptiFine has built-in support for shaders.' in log:
         return "🔴 You've installed a Shaders Mod alongside OptiFine. OptiFine has built-in shader support, so you should remove Shaders Mod."
 
-def using_system_glfw_or_openal(log):
+def using_system_glfw(log):
     if 'Using system GLFW' in log:
         return "🟠 You seem to be using your system's GLFW installation. This can cause the instance to crash if not properly setup. In case of a crash, make sure this isn't the cause of it."
 
@@ -381,7 +376,7 @@ def sodium_config(log):
         return '🔴 If your game crashes when you open the video settings menu or load into a world, delete `.minecraft/config/sodium-options.json`.'
 
 def using_ssrng(mods,is_multimc_or_fork):
-    if any('serverSideRNG-9.0.0.jar' in mod for mod in mods):
+    if any(mod == "serverSideRNG-9.0.0.jar" for mod in mods):
         return f"🟡 You are using serverSideRNG. The server for it is currently down, so the mod is useless and it's recommended to {'disable' if is_multimc_or_fork else 'delete'} it."
 
 def random_log_spam_maskers(log):
@@ -483,10 +478,11 @@ def ranked_non_whitelisted_mods(mods,log,is_multimc_or_fork):
                 output += f"<@695658634436411404> {'are' if len(non_whitelisted_mods)>1 else 'is'} ({', '.join(non_whitelisted_mods)}) whitelisted?\n"
         else:
             # if all mods should be whitelisted
-            
+
             output = output
         if output:
             return output
+
 
 def parse_log(link):
     log = download_from_paste_ee_or_mclogs(link)
