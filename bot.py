@@ -1,8 +1,7 @@
-import discord
-from discord.ext import commands
-import json
 import os
 import re
+import discord
+from discord.ext import commands
 from dotenv import load_dotenv
 from logparsing import parse_log
 
@@ -22,31 +21,29 @@ async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
-
     await process_log(message)
-
     # Process other commands
     await bot.process_commands(message)
 
 async def process_log(message):
+    matches = []
     # Check if the message contains a valid link
-    link_pattern = r'https:\/\/paste\.ee\/p\/\w+|https:\/\/mclo\.gs\/\w+'
+    link_pattern = r'https:\/\/paste\.ee\/p\/\w+|https:\/\/mclo\.gs\/\w+|https?:\/\/[\w\/.]+\.(?:txt|log)'
     matches = re.findall(link_pattern, message.content)
-    
+    if message.attachments:
+        for attachment in message.attachments:
+            file_url = attachment.url
+            matches.append(file_url)
     # Process each log link
     for match in matches:
-
         # Parse the log
         results = parse_log(match)
-
         # Check if there are results to send
         if results:
             # Join the results with newlines
             response = '\n'.join(results)
-
             # Send the message
             await message.channel.send(response)
-
             # Return to prevent sending a duplicate message
             return
 
