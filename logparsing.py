@@ -44,8 +44,8 @@ def get_mods_type(mods):
     mcsr_mods = ['worldpreview','anchiale','sleepbackground','StatsPerWorld','z-buffer-fog',
                 'tab-focus','setspawn','SpeedRunIGT','atum','standardsettings','forceport',
                 'lazystronghold','antiresourcereload','extra-options','chunkcacher',
-                'serverSideRNG','BiomeThreadLocalFix','peepopractice','fast-reset']
-    fabric_mods = ['FabricProxy-Lite','voyager','fabric']
+                'serverSideRNG','peepopractice','fast-reset']
+    fabric_mods = ['Fabric','voyager','fabric']
     if len(mods) == 0:
         return 0
     if any(any(mcsr_mod in mod for mcsr_mod in mcsr_mods) for mod in mods):
@@ -188,14 +188,9 @@ def should_use_prism(launcher, operating_system):
     if launcher == 'MultiMC' and operating_system == 'MacOS':
         return '🟡 If you use M1 or M2, it is recommended to use Prism Launcher instead of MultiMC. You can check out this guide for how to set up speedrunning on a Mac: <https://www.youtube.com/watch?v=GomIeW5xdBM>.'
 
-def need_java_17_plus_or_64bit_java(log, mods, major_java_version):
+def need_java_17_plus_or_64bit_java(log, mods, major_java_version, mods_type, is_multimc_or_fork):
     needed_java_version = None
     output = ''
-    if 'java.lang.UnsupportedClassVersionError' in log:
-        pattern = re.compile(r'class file version (\d+\.\d+)')
-        match = pattern.search(log)
-        if match:
-            needed_java_version = round(float(match.group(1)))-44
     if major_java_version and major_java_version < 17:
         java_17_mods = [mod for mod in mods if
                        'worldpreview-2.' in mod
@@ -213,18 +208,28 @@ def need_java_17_plus_or_64bit_java(log, mods, major_java_version):
             or any('peepopractice' in mod for mod in java_17_mods)
             or any('setspawnmod' in mod for mod in java_17_mods)):
                 update_java = 1
+            elif (any('worldpreview-2.' in mod for mod in java_17_mods)
+            or any('worldpreview-1.0' in mod for mod in java_17_mods)):
+                update_java = -1
+                output += "Delete it and download the latest version that doesn't require Java 17 from <https://github.com/Minecraft-Java-Edition-Speedrunning/mcsr-worldpreview-1.16.1/releases/latest>."
             else:
                 update_java = 0
-            if update_java:
+            if update_java == 1:
                 output += '\nUse this guide to update your Java version: <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>.'
-            else:
-                output += ' Delete them from your mods folder.\n'
-                output += '(alternatively, you can use this guide to update your Java version: <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>).'
+            elif update_java == 0:
+                output += f" Delete {'them' if len(java_17_mods)>1 else 'it'} from your `mods` folder."
+                if is_multimc_or_fork:
+                    output += "\n*(you can use this guide to update your Java version, which is better for performance:* <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>)"
     if 'Minecraft 1.18 Pre Release 2 and above require the use of Java 17' in log:
         output += "🔴 You are playing on a Minecraft version that requires using Java 17+.\n"
         output += 'Use this guide to update your Java version: <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>.'
     if output:
         return output
+    if 'java.lang.UnsupportedClassVersionError' in log:
+        pattern = re.compile(r'class file version (\d+\.\d+)')
+        match = pattern.search(log)
+        if match:
+            needed_java_version = round(float(match.group(1)))-44
     pattern = re.compile(r'The requested compatibility level (JAVA_\d+) could not be set.')
     match = pattern.search(log)
     if match:
@@ -233,7 +238,9 @@ def need_java_17_plus_or_64bit_java(log, mods, major_java_version):
         return f"🔴 You need to use Java {needed_java_version}+. Use this guide to update your Java version: <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>."
     if 'Your Java architecture is not matching your system architecture. You might want to install a 64bit Java version.' in log:
         return "🔴 You're using 32-bit Java. See here for help installing the correct version: <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a>."
-    
+    if 'Exception in thread "main" java.lang.ClassFormatError: Incompatible magic value 0 in class file sun/security/provider/SunEntries' in log:
+        return f"🔴 Your Java installation seems to be broken. Follow this guide to install and select the recommended Java version: <{'https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.62ygxgaxcs5a' if mods_type == 3 else 'https://prismlauncher.org/wiki/getting-started/installing-java/'}>."
+
 def outdated_srigt_fabric_01415(mods, fabric_loader_version, minecraft_version):
     output = ''
     speedrunigt = [mod for mod in mods if 'SpeedRunIGT' in mod]
@@ -279,7 +286,7 @@ def not_enough_ram_or_rong_sodium(max_memory_allocation, operating_system, mods,
             output += '🟡 You likely have too little RAM allocated. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.y78pfyby3w9b> for a guide on how to fix it.\n'
         if max_memory_allocation > 10000 and mods_type == 3:
             output += '🔴 You have way too much RAM allocated, which can cause lag spikes. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.owelqvpsehpw> for a guide on how to fix it.\n'
-        if max_memory_allocation > 4800 and mods_type == 3:
+        elif max_memory_allocation > 4800 and mods_type == 3:
             output += '🟠 You have too much RAM allocated, which can cause lag spikes. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.owelqvpsehpw> for a guide on how to fix it.\n'
         elif max_memory_allocation > 3500 and mods_type == 3:
             output += '🟡 You likely have too much RAM allocated, which can cause lag spikes. Check out <https://docs.google.com/document/d/1aPF1lyBAfPWyeHIH80F8JJw8rvvy6lRm0WJ2xxSrRh8/edit#heading=h.owelqvpsehpw> for a guide on how to fix it.\n'
@@ -429,7 +436,7 @@ def lithium_crash(log):
     # https://discord.com/channels/1056779246728658984/1074302943374872637/1119191694563344434 rankedcord
     if ('java.lang.IllegalStateException: Adding Entity listener a second time' in log
     and 'me.jellysquid.mods.lithium.common.entity.tracker.nearby' in log):
-        return "🟢 This seems to be a rare crash caused by Lithium that you can't do anything about. It happens really rarely, so far it only happened about 4 times for everyone."
+        return "🟢 This seems to be a rare crash caused by Lithium that you can't do anything about. It happens really rarely, so far we only know about 4 times of when it happened to someone, so it's not worth it to not use Lithium because of it."
 
 def old_arr(mods,minecraft_version):
     if ('antiresourcereload-1.16.1-1.0.0.jar' in mods) and (minecraft_version == '1.16.1'):
@@ -457,7 +464,7 @@ def exitcode_805306369_or_old_ssrng(log,mods):
         return "🔴 You're using an old version of serverSideRNG, which is now illegal and can often cause problems. The server for it is currently down, so the mod is useless regardless and you should delete it."
     if ('Process crashed with exitcode -805306369' in log
     or 'java.lang.ArithmeticException: / by zero' in log
-    or ('########## GL ERROR ##########' in log and '@ Render' in log and '########## GL ERROR ##########' in log)):
+    or ('########## GL ERROR ##########' in log and '@ Render' in log)):
         return "🟠 Check your options.txt file for any values that are set to 0 and are not supposed to be 0 (such as `maxFps:0`). If you find any, change them to the values you want and save the file."
 
 def ranked_non_whitelisted_mods(mods,log,is_multimc_or_fork):
@@ -477,7 +484,7 @@ def ranked_non_whitelisted_mods(mods,log,is_multimc_or_fork):
         if matches: # if ranked complains about non-whitelisted mods
             # non_whitelisted_mods_and_libs = list(matches)
             if any('fabric-api' in mod for mod in non_whitelisted_mods):
-                output += "🔴 You are using Fabric API. It is a mod separate to Fabric Loader, and it isn't allowed for speedrunning. Delete it from your `mods` folder.\n"
+                output += "🔴 You're using Fabric API. It is a mod separate to Fabric Loader, and it isn't allowed for speedrunning. Delete it from your `mods` folder.\n"
             practice_mods = ['peepopractice','stronghold-trainer','noverworld','blinded',
                              'heatshrink','lavapool-juicer','cageless','no-spawnchunks',
                              'treasure-juicer','no-basalt','shipwreck-juicer','logmod']
@@ -533,10 +540,13 @@ def class_not_found_error(log):
     if 'Caused by: java.lang.ClassNotFoundException: org.apache.logging.log4j.spi.AbstractLogger' in log:
         return "🔴 Try deleting the folder `.../MultiMC/libraries/org/apache/logging/log4j` and then launching the instance again."
 
-def detect_forge_installer_error(log):
+def random_forge_crashes(log):
     # happens on 1.20.1 with forge 47.0.14 for me on prism
     if 'java.lang.RuntimeException: Unable to detect the forge installer!' in log:
-        return "🔴 Try using a different version of Forge."
+        return "🔴 Try launching your instance online if you aren't. Also, try using a different version of Forge."
+    # happened in prismcord: https://discord.com/channels/1031648380885147709/1098659300651577425
+    if 'java.lang.NoClassDefFoundError: cpw/mods/modlauncher/Launcher' in log:
+        return "🔴 Try restarting the launcher, creating an instance without Forge and then installing Forge on this instance."
 
 
 def parse_log(link):
@@ -559,7 +569,7 @@ def parse_log(link):
     issues = [
         not_using_fabric(modloader,mods_type),
         should_use_prism(launcher,operating_system),
-        need_java_17_plus_or_64bit_java(log,mods,major_java_version),
+        need_java_17_plus_or_64bit_java(log,mods,major_java_version,mods_type,is_multimc_or_fork),
         outdated_srigt_fabric_01415(mods,fabric_loader_version,minecraft_version),
         outdated_fabric_loader(fabric_loader_version,mods),
         not_enough_ram_or_rong_sodium(max_memory_allocation, operating_system, mods, log, java_arguments, mods_type),
@@ -594,7 +604,7 @@ def parse_log(link):
         need_to_launch_online(log),
         javacheck_jar_on_prism(log,minecraft_version,modloader,operating_system),
         class_not_found_error(log),
-        detect_forge_installer_error(log)
+        random_forge_crashes(log)
     ]
     result = []
     for issue in issues:
