@@ -532,7 +532,7 @@ def javacheck_jar_on_prism(log,minecraft_version,modloader,operating_system):
             return f"🔴 You're using Java {current_version}, while you need to use Java {compatible_version} for this instance. You can download Java {compatible_version} from <https://adoptium.net/temurin/releases/>{' (download the .msi file)' if operating_system == 'Windows' else ' (download the .pkg file)' if operating_system == 'MacOS' else ''}. Then make sure to select Java {compatible_version} either globally or in instance settings."
         if switch_java == 0:
             return "🔴 Disable the Java compatibility check in `Settings > Java` either in instance settings or in global settings."
-        return f"🔴 Either use Java {compatible_version} for this instance, or disable the Java compatibility check in `Settings > Java` either in instance settings or in global settings."
+        return f"🔴 Either use Java {compatible_version} for this instance or disable the Java compatibility check in `Settings > Java` either in instance settings or in global settings."
     return None
 
 def class_not_found_error(log):
